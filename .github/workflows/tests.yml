@@ -33,7 +33,7 @@ jobs:
         run: docker compose build
 
       - name: Create docker network
-       run: docker network create labo05-network 
+        run: docker network create labo05-network 
 
       - name: Launch docker
         run: docker compose up -d 
