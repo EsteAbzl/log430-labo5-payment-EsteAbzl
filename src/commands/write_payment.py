@@ -6,6 +6,7 @@ Auteurs : Gabriel C. Ullmann, Fabio Petrillo, 2025
 
 from models.payment import Payment
 from db import get_sqlalchemy_session
+import requests
 
 def create_payment(order_id: int, user_id: int, total_amount: float):
     """Insert payment with items in MySQL"""
@@ -30,26 +31,34 @@ def update_status_to_paid(payment_id: int):
     """Update payment status to paid in MySQL"""
     if not payment_id:
         raise ValueError("Vous devez indiquer un ID de paiement.")
-    
+
     session = get_sqlalchemy_session()
 
     try:
         # Find the payment by ID
         payment = session.query(Payment).filter(Payment.id == payment_id).first()
-        
+
         if not payment:
             raise ValueError(f"Aucun paiement trouvé avec l'ID {payment_id}")
-        
+
         # Update the payment status
         payment.is_paid = True
         session.commit()
-        
+
+        response_from_update_order = requests.put("http://api-gateway:8080/store-manager-api/orders",
+            json={
+                "order_id": payment.order_id,
+                "is_paid": True
+                },
+            headers={'Content-Type': 'application/json'}
+        )
+
         return {
             "payment_id": payment_id,
             "order_id": payment.order_id,
             "is_paid": True
         }
-        
+
     except Exception as e:
         session.rollback()
         return {
