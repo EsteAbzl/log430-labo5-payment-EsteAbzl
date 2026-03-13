@@ -27,7 +27,7 @@ def test_create_payment(client):
         content_type='application/json'
     )
     
-    assert response.status_code in [200, 201], f"Expected 200 or 201, got {response.status_code}: {response.text}"
+    assert response.status_code in [200, 201], f"Expected 200 or 201, got {response.status_code}"
     assert response.json is not None, "Response should contain JSON data"
 
 def test_process_payment(client):
