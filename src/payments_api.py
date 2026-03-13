@@ -6,8 +6,38 @@ Auteurs : Gabriel C. Ullmann, Fabio Petrillo, 2025
 from logger import Logger
 from flask import Flask, request, jsonify
 from controllers.payment_controller import add_payment, process_payment, get_payment
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
 app = Flask(__name__)
+
+# TODO: Indiquez un nom pertinent à votre service
+resource = Resource.create({
+   "service.name": "service payment",
+   "service.version": "1.0.0"
+})
+
+trace.set_tracer_provider(TracerProvider(resource=resource))
+tracer = trace.get_tracer(__name__)
+
+# Indiquez l'endpoint Jaeger (hostname dans Docker)
+otlp_exporter = OTLPSpanExporter(
+   endpoint="http://jaeger:4317",
+   insecure=True
+)
+span_processor = BatchSpanProcessor(otlp_exporter)
+trace.get_tracer_provider().add_span_processor(span_processor)
+
+# Automatic Flask instrumentation
+FlaskInstrumentor().instrument_app(app)
+RequestsInstrumentor().instrument()
+
+# Ensuite, le code pour vos endpoints Flask, etc...
 logger = Logger.get_instance("payments")
 
 @app.route("/")
@@ -18,23 +48,25 @@ def home():
 @app.route("/payments", methods=["POST"])
 def post_add_payment():
     """Create a new payment"""
-    logger.debug("Endpoint: POST /payments")
-    try:
-        result = add_payment(request)
-        return jsonify(result), 201
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+    with tracer.start_as_current_span("post payments"):
+        logger.debug("Endpoint: POST /payments")
+        try:
+            result = add_payment(request)
+            return jsonify(result), 201
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
 
 @app.route("/payments/process/<int:payment_id>", methods=["POST"])
 def post_process_payment(payment_id):
     """Process a simulated credit card payment"""
-    logger.debug(f"Endpoint: POST /payments/process/{payment_id}")
-    try:
-        credit_card_data = request.get_json() or {}
-        result = process_payment(payment_id, credit_card_data)
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+    with tracer.start_as_current_span("post payments/process"):
+        logger.debug(f"Endpoint: POST /payments/process/{payment_id}")
+        try:
+            credit_card_data = request.get_json() or {}
+            result = process_payment(payment_id, credit_card_data)
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
     
 @app.route("/payments/<int:payment_id>", methods=["GET"])
 def get_payment_details(payment_id):
@@ -53,4 +85,4 @@ def handle_404(error):
 
 # Start Flask app
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5009, debug=True)
+    app.run(host='0.0.0.0', port=5009, debug=True, use_reloader=False)
