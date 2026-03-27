@@ -6,19 +6,26 @@ Auteurs : Gabriel C. Ullmann, Fabio Petrillo, 2025
 
 from models.payment import Payment
 from db import get_sqlalchemy_session
+from logger import Logger
+logger = Logger.get_instance("payment")
 
 def create_payment(order_id: int, user_id: int, total_amount: float):
     """Insert payment with items in MySQL"""
     if not order_id or not user_id or not total_amount or float(total_amount) <= 0:
         raise ValueError("Vous devez indiquer un ID commande, ID utilisateur et valeur pour le paiement.")
     
+    logger.debug("yoooooooo")
     session = get_sqlalchemy_session()
+    logger.debug("yoooooooo2")
 
     try: 
         new_payment = Payment(order_id=order_id, user_id=user_id, total_amount=total_amount, is_paid=False)
         session.add(new_payment)
+        logger.debug("yoooooooo")
         session.flush() 
+        logger.debug("yoooooooo")
         session.commit()
+        logger.debug("yoooooooo")
         return new_payment.id
     except Exception as e:
         session.rollback()

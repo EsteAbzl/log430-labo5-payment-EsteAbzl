@@ -9,11 +9,12 @@ services:
     ports:
       - "5009:5009"
     networks:
-      - labo05-network
+      - labo08-network
     depends_on:
       - mysql_payments
 
   mysql_payments:
+    container_name: mysql_payments
     image: mysql:8.4.7
     restart: unless-stopped
     environment:
@@ -21,16 +22,16 @@ services:
       MYSQL_DATABASE: labo05_payments_db
       MYSQL_USER: labo05
       MYSQL_PASSWORD: labo05
-    # ports:
-    #   - "3306:3306"
+    ports:
+      - "3307:3306"
     networks:
-      - labo05-network
+      - labo08-network
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db-init:/docker-entrypoint-initdb.d
 
 networks:
-  labo05-network:
+  labo08-network:
     external: true 
 
 volumes:
